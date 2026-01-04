@@ -9,7 +9,6 @@ from tqdm.asyncio import tqdm_asyncio
 
 import utils.constants as constants
 from updates.fofa import get_channels_by_fofa
-from updates.proxy import get_proxy, get_proxy_next
 from utils.channel import (
     get_results_from_multicast_soup,
     get_results_from_multicast_soup_requests,
@@ -22,7 +21,8 @@ from utils.channel import (
 from utils.config import config
 from utils.driver.setup import setup_driver
 from utils.driver.tools import search_submit
-from utils.requests.tools import get_soup_requests, close_session
+from utils.i18n import t
+from utils.requests.tools import get_soup_requests
 from utils.retry import (
     retry_func,
     find_clickable_element_with_retry,
@@ -56,12 +56,8 @@ async def get_channels_by_multicast(names, callback=None):
             pass
     if config.open_request:
         pageUrl = constants.foodie_hotel_url
-        proxy = None
-        open_proxy = config.open_proxy
         open_driver = config.open_driver
         page_num = config.multicast_page_num
-        if open_proxy:
-            proxy = await get_proxy(pageUrl, best=True, with_test=True)
         multicast_region_result = get_multicast_region_result_by_rtp_txt(callback=callback)
         name_region_type_result = get_channel_multicast_name_region_type_result(
             multicast_region_result, format_names
@@ -76,40 +72,37 @@ async def get_channels_by_multicast(names, callback=None):
             search_region_type_result = merge_objects(search_region_type_result, fofa_result)
 
         def process_channel_by_multicast(region, type):
-            nonlocal proxy
             name = f"{region}{type}"
             info_list = []
             driver = None
+            page_soup = None
+            code = None
             try:
                 if open_driver:
-                    driver = setup_driver(proxy)
+                    driver = setup_driver()
                     try:
                         retry_func(
-                            lambda: driver.get(pageUrl), name=f"multicast search:{name}"
+                            lambda: driver.get(pageUrl),
+                            name=t("msg.mode_search_name").format(mode=t("name.multicast"), name=name)
                         )
                     except Exception as e:
-                        if open_proxy:
-                            proxy = get_proxy_next()
+                        print(e)
                         driver.close()
                         driver.quit()
-                        driver = setup_driver(proxy)
+                        driver = setup_driver()
                         driver.get(pageUrl)
                     search_submit(driver, name)
                 else:
-                    page_soup = None
                     post_form = {"saerch": name}
-                    code = None
                     try:
                         page_soup = retry_func(
-                            lambda: get_soup_requests(pageUrl, data=post_form, proxy=proxy),
-                            name=f"multicast search:{name}",
+                            lambda: get_soup_requests(pageUrl, data=post_form),
+                            name=t("msg.mode_search_name").format(mode=t("name.multicast"), name=name)
                         )
                     except Exception as e:
-                        if open_proxy:
-                            proxy = get_proxy_next()
-                        page_soup = get_soup_requests(pageUrl, data=post_form, proxy=proxy)
+                        print(e)
                     if not page_soup:
-                        print(f"{name}:Request fail.")
+                        print(t("msg.request_failed").format(name=name))
                         return {"region": region, "type": type, "data": info_list}
                     else:
                         a_tags = page_soup.find_all("a", href=True)
@@ -138,8 +131,9 @@ async def get_channels_by_multicast(names, callback=None):
                                     f"{pageUrl}?net={name}&page={page}&code={code}"
                                 )
                                 page_soup = retry_func(
-                                    lambda: get_soup_requests(request_url, proxy=proxy),
-                                    name=f"multicast search:{name}, page:{page}",
+                                    lambda: get_soup_requests(request_url),
+                                    name=t("msg.mode_search_name_page").format(mode=t("name.multicast"), name=name,
+                                                                               page=page)
                                 )
                         soup = get_soup(driver.page_source) if open_driver else page_soup
                         if soup:
@@ -150,19 +144,19 @@ async def get_channels_by_multicast(names, callback=None):
                                 if open_driver
                                 else get_results_from_multicast_soup_requests(soup)
                             )
-                            print(name, "page:", page, "results num:", len(results))
+                            print(t("msg.name_page_results_number").format(name=name, page=page, number=len(results)))
                             if len(results) == 0:
-                                print(f"{name}:No results found")
+                                print(t("msg.name_no_results").format(name=name))
                             info_list = info_list + results
                         else:
-                            print(f"{name}:No page soup found")
+                            print(t("msg.name_page_element_empty").format(name=name))
                             if page != page_num and open_driver:
                                 driver.refresh()
                     except Exception as e:
-                        print(f"{name}:Error on page {page}: {e}")
+                        print(t("msg.name_page_error_info").format(name=name, page=page, info=e))
                         continue
             except Exception as e:
-                print(f"{name}:Error on search: {e}")
+                print(t("msg.name_search_error_info").format(name=name, info=e))
                 pass
             finally:
                 if driver:
@@ -171,17 +165,21 @@ async def get_channels_by_multicast(names, callback=None):
                 pbar.update()
                 if callback:
                     callback(
-                        f"正在进行Foodie组播更新, 剩余{region_type_list_len - pbar.n}个地区待查询, 预计剩余时间: {get_pbar_remaining(n=pbar.n, total=pbar.total, start_time=start_time)}",
+                        t("msg.progress_desc").format(name=t("name.multicast"),
+                                                      remaining_total=region_type_list_len - pbar.n,
+                                                      item_name=t("name.region"),
+                                                      remaining_time=get_pbar_remaining(n=pbar.n, total=pbar.total,
+                                                                                        start_time=start_time)),
                         int((pbar.n / region_type_list_len) * 100),
                     )
                 return {"region": region, "type": type, "data": info_list}
 
         if config.open_multicast_foodie:
             region_type_list_len = len(region_type_list)
-            pbar = tqdm_asyncio(total=region_type_list_len, desc="Multicast search")
+            pbar = tqdm_asyncio(total=region_type_list_len, desc=t("pbar.name_search").format(name=t("name.multicast")))
             if callback:
                 callback(
-                    f"正在进行Foodie组播更新, {len(names)}个频道, 共{region_type_list_len}个地区",
+                    f"{t("pbar.getting_name").format(name=t("name.multicast"))}",
                     0,
                 )
             start_time = time()
@@ -205,13 +203,11 @@ async def get_channels_by_multicast(names, callback=None):
                             date = item.get("date")
                             if url:
                                 search_region_type_result[region][type].append(
-                                    (url, date, None)
+                                    {"url": url, "date": date}
                                 )
             pbar.close()
         request_channels = get_channel_multicast_result(
             name_region_type_result, search_region_type_result
         )
         channels = merge_objects(channels, request_channels)
-        if not open_driver:
-            close_session()
     return channels

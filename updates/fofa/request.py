@@ -10,12 +10,12 @@ from tqdm.asyncio import tqdm_asyncio
 
 import updates.fofa.fofa_map as fofa_map
 import utils.constants as constants
-from updates.proxy import get_proxy, get_proxy_next
 from utils.channel import format_channel_name
 from utils.config import config
-from utils.requests.tools import get_source_requests, close_session
+from utils.i18n import t
+from utils.requests.tools import get_requests
 from utils.retry import retry_func
-from utils.tools import merge_objects, get_pbar_remaining, add_url_info, resource_path
+from utils.tools import merge_objects, get_pbar_remaining, resource_path
 
 
 def get_fofa_urls_from_region_list():
@@ -25,7 +25,7 @@ def get_fofa_urls_from_region_list():
     urls = []
     region_url = getattr(fofa_map, "region_url")
     region_list = config.hotel_region_list
-    if "all" in region_list or "ALL" in region_list or "全部" in region_list:
+    if "all" in region_list:
         urls = [
             (url, region)
             for region, url_list in region_url.items()
@@ -77,31 +77,25 @@ async def get_channels_by_fofa(urls=None, multicast=False, callback=None):
     if config.open_request:
         fofa_urls = urls if urls else get_fofa_urls_from_region_list()
         fofa_urls_len = len(fofa_urls)
+        mode_name = t("name.multicast") if multicast else t("name.hotel")
         pbar = tqdm_asyncio(
             total=fofa_urls_len,
-            desc=f"Processing fofa for {'multicast' if multicast else 'hotel'}",
+            desc=t("msg.fofa_processing_name").format(name=mode_name)
         )
         start_time = time()
-        mode_name = "组播" if multicast else "酒店"
         if callback:
             callback(
-                f"正在获取Fofa{mode_name}源, 共{fofa_urls_len}个查询地址",
+                f"{t("pbar.getting_name").format(name=mode_name)}",
                 0,
             )
-        proxy = None
-        open_proxy = config.open_proxy
         open_driver = config.open_driver
         if open_driver:
-            from utils.driver import setup_driver
-        open_sort = config.open_sort
-        if open_proxy:
-            test_url = fofa_urls[0][0]
-            proxy = await get_proxy(test_url, best=True, with_test=True)
+            from utils.driver.setup import setup_driver
+        open_speed_test = config.open_speed_test
         cancel_event = threading.Event()
         hotel_name = constants.origin_map["hotel"]
 
         def process_fofa_channels(fofa_info):
-            nonlocal proxy
             if cancel_event.is_set():
                 return {}
             fofa_url = fofa_info[0]
@@ -109,21 +103,20 @@ async def get_channels_by_fofa(urls=None, multicast=False, callback=None):
             driver = None
             try:
                 if open_driver:
-                    driver = setup_driver(proxy)
+                    driver = setup_driver()
                     try:
                         retry_func(lambda: driver.get(fofa_url), name=fofa_url)
                     except Exception as e:
-                        if open_proxy:
-                            proxy = get_proxy_next()
                         driver.close()
                         driver.quit()
-                        driver = setup_driver(proxy)
+                        driver = setup_driver()
                         driver.get(fofa_url)
                     page_source = driver.page_source
                 else:
-                    page_source = retry_func(
-                        lambda: get_source_requests(fofa_url), name=fofa_url
+                    page_response = retry_func(
+                        lambda: get_requests(fofa_url), name=fofa_url
                     )
+                    page_source = page_response.text
                 if any(keyword in page_source for keyword in ["访问异常", "禁止访问", "资源访问每天限制"]):
                     cancel_event.set()
                     raise ValueError("Limited access to fofa page")
@@ -135,13 +128,13 @@ async def get_channels_by_fofa(urls=None, multicast=False, callback=None):
                     multicast_result = [(url, None, None) for url in urls]
                     results[region][type] = multicast_result
                 else:
-                    with ThreadPoolExecutor(max_workers=100) as executor:
+                    with ThreadPoolExecutor(max_workers=10) as executor:
                         futures = [
                             executor.submit(
                                 process_fofa_json_url,
                                 url,
                                 fofa_info[1],
-                                open_sort,
+                                open_speed_test,
                                 hotel_name,
                             )
                             for url in urls
@@ -158,10 +151,13 @@ async def get_channels_by_fofa(urls=None, multicast=False, callback=None):
                     driver.close()
                     driver.quit()
                 pbar.update()
-                remain = fofa_urls_len - pbar.n
                 if callback:
                     callback(
-                        f"正在获取Fofa{mode_name}源, 剩余{remain}个查询地址待获取, 预计剩余时间: {get_pbar_remaining(n=pbar.n, total=pbar.total, start_time=start_time)}",
+                        t("msg.progress_desc").format(name=f"{t("pbar.get")} FOFA {mode_name}",
+                                                      remaining_total=fofa_urls_len - pbar.n,
+                                                      item_name=mode_name,
+                                                      remaining_time=get_pbar_remaining(n=pbar.n, total=pbar.total,
+                                                                                        start_time=start_time)),
                         int((pbar.n / fofa_urls_len) * 100),
                     )
 
@@ -185,16 +181,14 @@ async def get_channels_by_fofa(urls=None, multicast=False, callback=None):
         pbar.update(0)
         if callback:
             callback(
-                f"正在获取Fofa{mode_name}源",
+                f"{t("pbar.getting_name").format(name=mode_name)}",
                 100,
             )
-        if not open_driver:
-            close_session()
         pbar.close()
     return fofa_results
 
 
-def process_fofa_json_url(url, region, open_sort, hotel_name="酒店源"):
+def process_fofa_json_url(url, region, open_speed_test, hotel_name=t("name.hotel")):
     """
     Process the FOFA json url
     """
@@ -215,20 +209,11 @@ def process_fofa_json_url(url, region, open_sort, hotel_name="酒店源"):
                             item_name = format_channel_name(item.get("name"))
                             item_url = item.get("url").strip()
                             if item_name and item_url:
-                                total_url = (
-                                    add_url_info(
-                                        f"{url}{item_url}",
-                                        f"{region}{hotel_name}-cache:{url}",
-                                    )
-                                    if open_sort
-                                    else add_url_info(
-                                        f"{url}{item_url}", f"{region}{hotel_name}"
-                                    )
-                                )
+                                data = {"url": f"{url}{item_url}", "extra_info": f"{region}{hotel_name}"}
                                 if item_name not in channels:
-                                    channels[item_name] = [(total_url, None, None)]
+                                    channels[item_name] = [data]
                                 else:
-                                    channels[item_name].append((total_url, None, None))
+                                    channels[item_name].append(data)
                 except Exception as e:
                     # print(f"Error on fofa: {e}")
                     pass

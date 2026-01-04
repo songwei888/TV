@@ -2,7 +2,12 @@
 
 [English](./tutorial_en.md) | 中文
 
-IPTV-API是一个可高度自定义的IPTV接口更新项目📺，自定义频道菜单，自动获取直播源，测速验效后生成可用的结果，可实现『✨秒播级体验🚀』
+<div align="center">
+  <img src="../static/images/logo.png" alt="logo"/>
+  <h1 align="center">IPTV-API</h1>
+</div>
+
+📺IPTV直播源自动更新平台，『🤖全自动采集、筛选、测速、生成流程🚀』，支持丰富的个性化配置，将结果地址输入播放器即可观看
 
 以下一共4种安装运行方式，选择一种适合您的即可
 
@@ -85,7 +90,8 @@ IPTV-API是一个可高度自定义的IPTV接口更新项目📺，自定义频�
 
 1. 创建文件
 2. 配置文件命名为`user_config.ini`
-3. 粘贴默认配置
+3. 粘贴默认配置 （创建`user_config.ini`可以只输入想要修改的配置项即可，无需全部复制 config.ini，注意配置文件上方的
+   `[Settings]`必须保留，否则下方的自定义配置不生效）
 4. 修改模板和结果文件配置：
     - source_file = config/user_demo.txt
     - final_file = output/user_result.txt
@@ -98,12 +104,11 @@ IPTV-API是一个可高度自定义的IPTV接口更新项目📺，自定义频�
 按照您的需要适当调整配置，以下是默认配置说明：
 [配置参数](./config.md)
 
-#### Tips：
-
-1. 对于开启显示接口信息，由于部分播放器（如`PotPlayer`）不支持解析接口补充信息，导致无法正常播放，可修改配置:`open_url_info
+> [!NOTE]
+> 1. 对于开启显示接口信息，由于部分播放器（如`PotPlayer`）不支持解析接口补充信息，导致无法正常播放，可修改配置:`open_url_info
 =False`（GUI：取消勾选显示接口信息）关闭该功能
-2. 如果你的网络确定支持IPv6，可修改配置:`ipv6_support =True`(GUI：勾选跳过IPv6检测）跳过支持性检查
-3. 开启关键字搜索（默认关闭）会大幅增加更新耗时，不推荐开启
+> 2. 如果你的网络确定支持IPv6，可修改配置:`ipv6_support =True`(GUI：勾选`强制认为当前网络支持IPv6`）跳过支持性检查
+> 3. 开启关键字搜索（默认关闭）会大幅增加更新耗时，不推荐开启
 
 #### 同理你可以自定义订阅源、黑名单、白名单（建议复制文件重命名添加`user_`前缀）
 
@@ -117,6 +122,16 @@ IPTV-API是一个可高度自定义的IPTV接口更新项目📺，自定义频�
 
   频道接口数据来源于本地文件，程序将依次读取其中的频道接口数据
   ![本地源](./images/local.png '本地源')
+
+
+- EPG源（`config/epg.txt`）
+
+  频道预告信息数据来源，程序将依次获取文件中订阅地址的频道预告数据，进行汇总输出
+
+
+- 频道别名（`config/alias.txt`）
+
+  频道名称的别名名单，用于获取接口时将多种名称映射为一个名称的结果，可以提升获取量与准确率，格式：模板频道名称,别名1,别名2,别名3
 
 
 - 黑名单（`config/blacklist.txt`）
@@ -177,8 +192,9 @@ IPTV-API是一个可高度自定义的IPTV接口更新项目📺，自定义频�
 
 ![Workflow运行中](./images/workflow-running.png 'Workflow运行中')
 
-（注意：由于运行时间取决于您的模板频道数量以及页数等配置，也很大程度取决于当前网络状况，请耐心等待，默认模板与配置一般需要15
-分钟左右。）
+> [!NOTE]\
+> 由于运行时间取决于您的模板频道数量以及页数等配置，也很大程度取决于当前网络状况，请耐心等待，默认模板与配置一般需要15
+> 分钟左右。
 
 ##### （4）Workflow 取消运行：
 
@@ -202,8 +218,9 @@ https://cdn.jsdelivr.net/gh/您的github用户名/仓库名称（对应上述For
 如果访问该链接能正常返回更新后的接口内容，说明您的直播源接口链接已经大功告成了！将该链接复制粘贴到`TVBox`
 等播放器配置栏中即可使用~
 
-- 注意：除了首次执行工作流需要您手动触发，后续执行（默认北京时间`每日6:00与18:00`）将自动触发。如果您修改了模板或配置文件想立刻执行更新，可手动触发（2）中的
-  `Run workflow`即可。
+> [!NOTE]\
+> 除了首次执行工作流需要您手动触发，后续执行（默认北京时间`每日6:00与18:00`）将自动触发。如果您修改了模板或配置文件想立刻执行更新，可手动触发（2）中的
+`Run workflow`即可。
 
 #### 4.修改工作流更新频率（可选）
 
@@ -217,9 +234,9 @@ https://cdn.jsdelivr.net/gh/您的github用户名/仓库名称（对应上述For
 - cron: '0 10 */2 * *'
 ```
 
-##### 1. 强烈不建议修改更新频率过高，因为短时间内的接口内容并无差异，过高的更新频率与高耗时运行的工作流都有可能被判定为资源滥用，导致仓库与账户被封禁的风险。
-
-##### 2. 请留意您的工作流运行时长，若发现执行时间过长，需要适当删减模板中频道数量、修改配置中的分页数量和接口数量，以达到合规的运行要求。
+> [!WARNING]
+> 1. 强烈不建议修改更新频率过高，因为短时间内的接口内容并无差异，过高的更新频率与高耗时运行的工作流都有可能被判定为资源滥用，导致仓库与账户被封禁的风险。
+> 2. 请留意您的工作流运行时长，若发现执行时间过长，需要适当删减模板中频道数量、修改配置中的分页数量和接口数量，以达到合规的运行要求。
 
 ## 命令行
 
@@ -253,7 +270,7 @@ pipenv run service
 
 ## GUI 软件
 
-1. 下载[IPTV-API 更新软件](https://github.com/Guovin/iptv-api/releases)，打开软件，点击更新，即可完成更新
+1. 下载[IPTV-API 更新软件](https://github.com/Guovin/iptv-api/releases)，打开软件，点击启动，即可进行更新
 
 2. 或者在项目目录下运行以下命令，即可打开 GUI 软件：
 
@@ -263,95 +280,101 @@ pipenv run ui
 
 ![IPTV-API 更新软件](./images/ui.png 'IPTV-API 更新软件')
 
-如果你看不懂软件的配置项，不要动，直接点开始更新即可
+如果你看不懂软件的配置项，不要动，直接点启动即可
 
 ## Docker
 
-- `iptv-api`（完整版本）：性能要求较高，更新速度较慢，稳定性、成功率高；修改配置`open_driver = False`可切换到`Lite`
-  版本运行模式（推荐酒店源、组播源、关键字搜索使用此版本）
-- `iptv-api:lite`（精简版本）：轻量级，性能要求低，更新速度快，稳定性不确定（推荐订阅源使用此版本）
+### 1. Compose部署（推荐）
 
-### 1. 拉取镜像
+下载[docker-compose.yml](../docker-compose.yml)或复制内容创建（内部参数可按需更改），在文件所在路径下运行以下命令即可部署：
 
-- iptv-api
+```bash
+docker compose up -d
+```
+
+### 2. 手动命令部署
+
+#### （1）拉取镜像
 
 ```bash
 docker pull guovern/iptv-api:latest
 ```
 
-🚀 代理加速（推荐国内用户使用）：
+🚀 代理加速（若拉取失败可以使用该命令，但有可能拉取的是旧版本）：
 
 ```bash
 docker pull docker.1ms.run/guovern/iptv-api:latest
 ```
 
-- iptv-api:lite
+#### （2）运行容器
 
 ```bash
-docker pull guovern/iptv-api:lite
+docker run -d -p 80:8080 guovern/iptv-api
 ```
 
-🚀 代理加速（推荐国内用户使用）：
+**环境变量：**
+
+| 变量              | 描述                                | 默认值       |
+|:----------------|:----------------------------------|:----------|
+| PUBLIC_DOMAIN   | 公网域名或IP地址，决定外部访问或推流结果的Host地址      | 127.0.0.1 |
+| PUBLIC_PORT     | 公网端口，设置为映射后的端口，决定外部访问地址和推流结果地址的端口 | 80        |
+| NGINX_HTTP_PORT | HTTP服务端口，外部访问需要映射该端口              | 8080      |
+
+如果需要修改环境变量，在上述运行命令后添加以下参数：
 
 ```bash
-docker pull docker.1ms.run/guovern/iptv-api:lite
+# 修改公网域名
+-e PUBLIC_DOMAIN=your.domain.com
+# 修改公网端口
+-e PUBLIC_PORT=80
 ```
 
-### 2. 运行容器
+除了以上环境变量，还支持通过环境变量覆盖配置文件中的[配置项](../docs/config.md)
 
-- iptv-api
+**挂载：** 实现宿主机文件与容器文件同步，修改模板、配置、获取更新结果文件可直接在宿主机文件夹下操作，在上述运行命令后添加以下参数
 
 ```bash
-docker run -d -p 8000:8000 guovern/iptv-api
+# 挂载配置目录
+-v /iptv-api/config:/iptv-api/config
+# 挂载结果目录
+-v /iptv-api/output:/iptv-api/output
 ```
 
-- iptv-api:lite
+#### 3. 更新结果
 
-```bash
-docker run -d -p 8000:8000 guovern/iptv-api:lite
-```
+| 接口              | 描述          |
+|:----------------|:------------|
+| /               | 默认接口        |
+| /m3u            | m3u 格式接口    |
+| /txt            | txt 格式接口    |
+| /ipv4           | ipv4 默认接口   |
+| /ipv6           | ipv6 默认接口   |
+| /ipv4/txt       | ipv4 txt接口  |
+| /ipv6/txt       | ipv6 txt接口  |
+| /ipv4/m3u       | ipv4 m3u接口  |
+| /ipv6/m3u       | ipv6 m3u接口  |
+| /content        | 接口文本内容      |
+| /log/result     | 有效结果的日志     |
+| /log/speed-test | 所有参与测速接口的日志 |
+| /log/statistic  | 统计结果的日志     |
+| /log/nomatch    | 未匹配频道的日志    |
 
-#### 挂载（推荐）：
+**RTMP 推流：**
 
-实现宿主机文件与容器文件同步，修改模板、配置、获取更新结果文件可直接在宿主机文件夹下操作
+> [!NOTE]
+> 1. 如果是服务器部署，请务必配置`PUBLIC_DOMAIN`环境变量为服务器域名或IP地址，`PUBLIC_PORT`环境变量为公网端口，否则推流地址无法访问
+> 2. 开启推流后，默认会将获取到的接口（如订阅源）进行推流
+> 3. 如果需要对本地视频源进行推流，可在`config`目录下新建`hls`文件夹，将以`频道名称命名`的视频文件放入其中，程序会自动推流到对应的频道中
 
-以宿主机路径`/etc/docker`为例：
-
-- iptv-api
-
-```bash
--v /etc/docker/config:/iptv-api/config
--v /etc/docker/output:/iptv-api/output
-```
-
-- iptv-api:lite
-
-```bash
--v /etc/docker/config:/iptv-api-lite/config
--v /etc/docker/output:/iptv-api-lite/output
-```
-
-##### 注意：如果重新拉取镜像进行更新版本后，涉及到配置文件变更或增加新配置时，务必覆盖主机的旧配置文件（config目录），因为主机的配置文件是无法自动更新的，否则容器还是以旧配置运行。
-
-#### 环境变量：
-
-- 端口
-
-```bash
--e APP_PORT=8000
-```
-
-- 定时执行时间
-
-```bash
--e UPDATE_CRON1="0 22 * * *"
--e UPDATE_CRON2="0 10 * * *"
-```
-
-### 3. 更新结果
-
-- 接口地址：`ip:8000`
-- m3u 接口：`ip:8000/m3u`
-- txt 接口：`ip:8000/txt`
-- 接口内容：`ip:8000/content`
-- 测速日志：`ip:8000/log`
+| 推流接口          | 描述           |
+|:--------------|:-------------|
+| /hls          | 推流接口         |
+| /hls/txt      | 推流txt接口      |
+| /hls/m3u      | 推流m3u接口      |
+| /hls/ipv4     | 推流ipv4 默认接口  |
+| /hls/ipv6     | 推流ipv6 默认接口  |
+| /hls/ipv4/txt | 推流ipv4 txt接口 |
+| /hls/ipv4/m3u | 推流ipv4 m3u接口 |
+| /hls/ipv6/txt | 推流ipv6 txt接口 |
+| /hls/ipv6/m3u | 推流ipv6 m3u接口 |
+| /stat         | 推流状态统计接口     |
